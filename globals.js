@@ -1,0 +1,3 @@
+//globals.js
+
+var jobs = [];
