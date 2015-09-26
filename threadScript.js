@@ -2,13 +2,12 @@
 // Job class
 // Object used to store Job components in a multi-threaded environment.
 // @field - dataBuffer: Any JavaScript object that holds all data for a Job.
-// @function - nextTask: Any JavaScript function that will perform the next
-//		portion of work for the Job. Ideally this task should take no
-//		longer than a half of second to complete its task. This is to
-//		ensure that the system does not get bogged down in one task.
+// @field - intervalRef: Reference to the interval task returned by setInterval.
+// @function - start: Any javascript with no arguments that initiates the job.
 function Job(initialData) {
 	this.dataBuffer = initialData;
-	this.nextTask = null;
+	this.intervalRef = null;
+	this.start = null;
 }
 
 // TextData class
@@ -26,42 +25,45 @@ function TextData(stringToPrint, htmlContainer, speedToPrint) {
 // execute function
 // Function executes all the queued jobs
 execute = function() {
-	int i;
+	var i;
 	for(i = 0; i < jobs.length; i++) {
-		jobs[i].nextTask();
+		jobs[i].start();
 	}
-	jobs = [];
 }
 
+// queuePrint function
+// Sets up a scrolling print job and pushed to jobs array.
+// @param - outString: The string to be printed.
+// @param - printDiv: The html container to print the string to.
+// @param - speed: The number of milliseconds between character printing.
 queuePrint = function(outString, printDiv, speed) {
 	var textData = new TextData(outString, printDiv, speed);
 	var curJob = new Job(textData);
-	var curJob.nextTask = function() {
-		var jobData = curJob.dataBuffer;
+	curJob.start = function() { 
+		var jobData = this.dataBuffer;
 		if(jobData.output.length > 0) {
 			var curOutput = jobData.container.text();
 			jobData.container.html(curOutput + jobData.output[0]);
 			jobData.output = jobData.output.slice(1);
+			this.intervalRef = setInterval(scrollPrint, jobData.outputSpeed, this);
 		}
 	};
 	jobs.push(curJob);
-};
+}
 
-printOutput = function(output, container, speed, buffInd) {
-	buffers[buffInd] = output;
-	containers[buffInd] = container;
-	outputInterval = setInterval(VisualUtils.scrollPrint, speed);
-};
-
-scrollPrint = function() {
-	if(outputTxt) {
-		var curOutput = lastDiv.text();
-		lastDiv.html(curOutput + outputTxt[0]);
-		outputTxt = outputTxt.slice(1);
+// scrollPrint function
+// Prints one character of the string contained in the job dataBuffer
+// and clears the task when the string is empty.
+// @param - job: The job object that contains the string and intervalRef.
+scrollPrint = function(job) {
+	var jobData = job.dataBuffer;
+	if(jobData.output.length > 0) {
+		var curOutput = jobData.container.text();
+		jobData.container.html(curOutput + jobData.output[0]);
+		jobData.output = jobData.output.slice(1);	
 	}
 	else {
-		clearInterval(outputInterval);
-		VisualUtils.returnControl();
+		clearInterval(job.intervalRef);
 	}
-};
+}
 
